@@ -129,68 +129,157 @@
 
 
 
+# import streamlit as st
+# import numpy as np
+# import cv2
+# from PIL import Image
+# import tensorflow as tf
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense
+
+# # 1. Rebuild same CNN architecture
+# def build_model():
+#     model = Sequential([
+#         Input(shape=(64, 64, 3), name="input_layer"),
+#         Conv2D(32, (3, 3), activation='relu'),
+#         MaxPooling2D((2, 2)),
+#         Conv2D(64, (3, 3), activation='relu'),
+#         MaxPooling2D((2, 2)),
+#         Conv2D(128, (3, 3), activation='relu'),
+#         MaxPooling2D((2, 2)),
+#         Flatten(),
+#         Dense(128, activation='relu'),
+#         Dense(1, activation='sigmoid')
+#     ])
+#     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+#     return model
+
+# # 2. Cache & load weights once
+# @st.cache_resource
+# def load_cancer_model():
+#     model = build_model()
+#     # Load only the weights from the H5 file
+#     model.load_weights("skin_cancer_model.h5")
+#     return model
+
+# # 3. Preprocess matching training (64x64, normalize)
+# IMG_SIZE = (64, 64)
+# def preprocess_image(image: Image.Image):
+#     img = np.array(image.convert('RGB'))
+#     img = cv2.resize(img, IMG_SIZE)
+#     img = img / 255.0
+#     img = np.expand_dims(img, axis=0)
+#     return img
+
+# def is_cancerous(pred_value: float):
+#     return "🧬 Cancerous (Malignant)" if pred_value > 0.5 else "✅ Non-Cancerous (Benign)"
+
+# # 4. Streamlit UI 
+# st.set_page_config(page_title="Skin Cancer Detector", page_icon="🔬", layout="centered")
+# st.markdown("<h1 style='text-align: center; color: #6a1b9a;'>🔬 Skin Cancer Detection App</h1>", unsafe_allow_html=True)
+# st.markdown("<p style='text-align: center;'>Upload a skin lesion image to check if it's <b>benign</b> or <b>malignant</b>.</p>", unsafe_allow_html=True)
+# st.markdown("---")
+
+# uploaded_file = st.file_uploader("📁 Upload a skin image", type=["jpg", "jpeg", "png"])
+# if uploaded_file is not None:
+#     image = Image.open(uploaded_file)
+#     st.image(image, caption="📷 Uploaded Image", use_column_width=True)
+#     st.markdown("---")
+#     if st.button("🔍 Predict"):
+#         with st.spinner("🧠 Analyzing image..."):
+#             img_array = preprocess_image(image)
+#             model = load_cancer_model()
+#             pred = model.predict(img_array)[0][0]
+#             st.markdown("<h3 style='text-align: center; color: #00897b;'>🧪 Result</h3>", unsafe_allow_html=True)
+#             st.markdown(f"<h2 style='text-align: center;'>{is_cancerous(pred)}</h2>", unsafe_allow_html=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import streamlit as st
 import numpy as np
 import cv2
 from PIL import Image
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense
+from tensorflow.keras.models import load_model
 
-# 1. Rebuild same CNN architecture
-def build_model():
-    model = Sequential([
-        Input(shape=(64, 64, 3), name="input_layer"),
-        Conv2D(32, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        Conv2D(64, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        Conv2D(128, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        Flatten(),
-        Dense(128, activation='relu'),
-        Dense(1, activation='sigmoid')
-    ])
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-    return model
-
-# 2. Cache & load weights once
+# Load model only once
 @st.cache_resource
 def load_cancer_model():
-    model = build_model()
-    # Load only the weights from the H5 file
-    model.load_weights("skin_cancer_model.h5")
-    return model
+    return load_model("skin_cancer_model.h5", compile=False)
 
-# 3. Preprocess matching training (64x64, normalize)
+# Image size used during training
 IMG_SIZE = (64, 64)
-def preprocess_image(image: Image.Image):
-    img = np.array(image.convert('RGB'))
+
+# Preprocess uploaded image
+def preprocess_image(image):
+    img = np.array(image.convert("RGB"))
     img = cv2.resize(img, IMG_SIZE)
-    img = img / 255.0
+    img = img.astype("float32") / 255.0
     img = np.expand_dims(img, axis=0)
     return img
 
-def is_cancerous(pred_value: float):
-    return "🧬 Cancerous (Malignant)" if pred_value > 0.5 else "✅ Non-Cancerous (Benign)"
+# Prediction label
+def is_cancerous(pred):
+    if pred > 0.5:
+        return "🧬 Cancerous (Malignant)"
+    else:
+        return "✅ Non-Cancerous (Benign)"
 
-# 4. Streamlit UI 
-st.set_page_config(page_title="Skin Cancer Detector", page_icon="🔬", layout="centered")
-st.markdown("<h1 style='text-align: center; color: #6a1b9a;'>🔬 Skin Cancer Detection App</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Upload a skin lesion image to check if it's <b>benign</b> or <b>malignant</b>.</p>", unsafe_allow_html=True)
-st.markdown("---")
+# -------------------- UI --------------------
 
-uploaded_file = st.file_uploader("📁 Upload a skin image", type=["jpg", "jpeg", "png"])
+st.set_page_config(
+    page_title="Skin Cancer Detector",
+    page_icon="🔬",
+    layout="centered"
+)
+
+st.title("🔬 Skin Cancer Detection")
+st.write(
+    "Upload a skin lesion image to predict whether it is **Benign** or **Malignant**."
+)
+
+uploaded_file = st.file_uploader(
+    "Upload Image",
+    type=["jpg", "jpeg", "png"]
+)
+
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
-    st.image(image, caption="📷 Uploaded Image", use_column_width=True)
-    st.markdown("---")
+
+    st.image(
+        image,
+        caption="Uploaded Image",
+        use_container_width=True
+    )
+
     if st.button("🔍 Predict"):
-        with st.spinner("🧠 Analyzing image..."):
-            img_array = preprocess_image(image)
+
+        with st.spinner("Analyzing..."):
+
             model = load_cancer_model()
-            pred = model.predict(img_array)[0][0]
-            st.markdown("<h3 style='text-align: center; color: #00897b;'>🧪 Result</h3>", unsafe_allow_html=True)
-            st.markdown(f"<h2 style='text-align: center;'>{is_cancerous(pred)}</h2>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align: center;'>🔎 Confidence Score: <b>{pred * 100:.2f}%</b></p>", unsafe_allow_html=True)
+            img = preprocess_image(image)
+
+            prediction = model.predict(img, verbose=0)[0][0]
+
+            st.success("Prediction Completed")
+
+            st.subheader("Result")
+
+            st.markdown(f"## {is_cancerous(prediction)}")
+
+            confidence = prediction if prediction > 0.5 else (1 - prediction)
+
+            st.write(f"**Confidence:** {confidence*100:.2f}%")
+#             st.markdown(f"<p style='text-align: center;'>🔎 Confidence Score: <b>{pred * 100:.2f}%</b></p>", unsafe_allow_html=True)
 
